@@ -1,57 +1,72 @@
 # Đóng gói frontend
 
-## Bước 1: Tạo Dockerfile cho frontend
-
-```
 # Bước 1: Sử dụng Node.js image làm base
-FROM node:16
+```FROM node:20-alpine AS build```
 
 # Bước 2: Đặt thư mục làm việc trong container
-WORKDIR /app
+```WORKDIR /app```
 
-# Bước 3: Copy package.json và package-lock.json vào container
-COPY package*.json ./
+# Bước 3: Copy file package.json và package-lock.json để cài dependencies
+```COPY package*.json ./```
 
-# Bước 4: Cài đặt dependencies (thư viện frontend)
-RUN npm install
+# Bước 4: Cài đặt dependencies
+```RUN npm install```
 
 # Bước 5: Copy toàn bộ mã nguồn vào container
-COPY . .
+```COPY . .```
 
-# Bước 6: Build ứng dụng frontend
-RUN npm run build
+# Bước 6: Truyền biến môi trường API URL từ build argument
+```ARG REACT_APP_API_URL```
+```ENV REACT_APP_API_URL=${REACT_APP_API_URL}```
 
-# Bước 7: Mở port 3000 để truy cập ứng dụng frontend
-EXPOSE 3000
+# Bước 7: Đặt PUBLIC_URL rỗng để build vào root path
+```ENV PUBLIC_URL=""```
 
-# Bước 8: Chạy ứng dụng frontend
-CMD ["npm", "start"]
+# Bước 8: Build ứng dụng React
+```RUN npm run build```
 
-```
-- **`FROM node:16`**: 
-  - Sử dụng Docker image chính thức **Node.js 16** làm môi trường base cho ứng dụng.
-  
+# Bước 9: Mở cổng 3000 (tuỳ chọn)
+```EXPOSE 3000```
+
+# Bước 10: Khởi động app (nếu chạy dev server)
+```CMD ["npm", "start"]```
+
+---
+# Giai thich cu phap
+- **`FROM node:20-alpine AS build`**:
+  - Sử dụng Docker image chính thức **Node.js 20 (bản Alpine)** để tạo môi trường build nhẹ, tối ưu.
+  - Từ khóa `AS build` đặt tên cho giai đoạn này là `build`, giúp dễ quản lý khi dùng multi-stage.
+
 - **`WORKDIR /app`**:
-  - Thiết lập **thư mục làm việc** trong container là `/app`, nghĩa là mọi thao tác tiếp theo sẽ được thực hiện trong thư mục này.
+  - Thiết lập **thư mục làm việc** trong container là `/app`, mọi thao tác sau đó sẽ thực hiện tại đây.
 
 - **`COPY package*.json ./`**:
-  - Sao chép **`package.json`** và **`package-lock.json`** vào thư mục làm việc trong container để chuẩn bị cài đặt **dependencies**.
+  - Copy các file `package.json` và `package-lock.json` vào container.
+  - Giúp tận dụng cache khi cài đặt dependency, tránh phải cài lại nếu code không đổi.
 
 - **`RUN npm install`**:
-  - Chạy lệnh **`npm install`** để cài đặt các thư viện và dependencies từ **`package.json`** trong container.
+  - Cài đặt tất cả thư viện được định nghĩa trong `package.json` bằng npm.
 
 - **`COPY . .`**:
-  - Sao chép **toàn bộ mã nguồn** vào thư mục làm việc trong container.
+  - Copy toàn bộ mã nguồn từ máy host vào container tại thư mục `/app`.
+
+- **`ARG REACT_APP_API_URL`**:
+  - Khai báo một biến nhận giá trị từ bên ngoài khi build Docker image (`--build-arg`).
+
+- **`ENV REACT_APP_API_URL=${REACT_APP_API_URL}`**:
+  - Thiết lập biến môi trường nội bộ trong container, dùng cho ứng dụng React trong lúc build.
+
+- **`ENV PUBLIC_URL=""`**:
+  - Đặt PUBLIC_URL rỗng để React build app vào root path (`/`) thay vì subpath.
 
 - **`RUN npm run build`**:
-  - Chạy lệnh **`npm run build`** để build ứng dụng frontend. Lệnh này sẽ tạo ra thư mục `build/` chứa các file static sẵn sàng cho việc triển khai.
+  - Build ứng dụng React, kết quả nằm trong thư mục `/app/build`, sẵn sàng để deploy.
 
 - **`EXPOSE 3000`**:
-  - Mở cổng **3000** trong container để có thể truy cập ứng dụng React khi container chạy.
+  - Mở cổng 3000 cho container, phục vụ trong trường hợp dùng `npm start` hoặc chạy server dev.
 
 - **`CMD ["npm", "start"]`**:
-  - Khi container khởi động, lệnh này sẽ được chạy để bắt đầu ứng dụng frontend.
-
+  - Thiết lập lệnh mặc định khi container khởi động: chạy ứng dụng bằng `npm start`.
 
 ---
 
